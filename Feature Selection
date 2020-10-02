@@ -1,0 +1,96 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Oct  1 22:07:28 2020
+
+@author: Eszter
+"""
+
+
+import pandas as pd
+#import numpy as np
+#import seaborn as sns
+#import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+#from sklearn.metrics import roc_auc_score
+from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+
+
+#Adatok betöltése Excelből
+data = pd.read_excel (r'D:\BME\SZAKDOLGOZAT\470.xlsx')
+ #place "r" before the path string to address special character, such as '\'. Don't forget to put the file name at the end of the path + '.xlsx'
+
+#Táblázat ellenőrzése
+#print (data)
+
+#A minta nevének és a nemnek a kivágása a táblázatból
+data = data.drop(["Minta ", "Nem"], axis=1)
+
+
+#A diagnózis kivágása a táblázatból, hogy aztán a targetbe tegyük
+data2 = data.drop("Csoport", axis=1)
+#Kiíratás ellenőrzésre
+#print (features)
+
+#A diagnózis kerül a targetbe, hogy ez alapján osztályozzunk
+target = data["Csoport"] #Diagnózis
+#Kiíratás ellenőrzésre
+#print (target)
+
+
+X = pd.DataFrame(data2) #többi adat
+y = target #HC vagy PA
+
+
+#Hiányzó elemek keresése
+#Mivel elvileg 2 van, ezeket átlaggal helyettesítem
+X.isnull().sum()
+column_means = X.mean()
+X = X.fillna(column_means)
+
+j = 0 #Mindig az adott oszlopra mutat
+x = pd.DataFrame()
+tester = pd.DataFrame() #Előzőleg X volt, az adathalmaz amivel osztályozunk
+new_table = pd.DataFrame()
+features = pd.DataFrame()
+acc =0 
+f = 0 #Kiválasztott jellemzők száma
+
+while True:
+	if f < 50:
+		while True:
+			if j < 49-f:
+				x = X.iloc[:, j] #Az aktuális oszlop, feature
+				tester = pd.concat([features, x], axis = 1, sort = False) #Az adatok halmaza az aktuális oszloppal kibővítve
+		
+				#Osztályozó
+				from sklearn.datasets import make_classification
+				X_train, X_test, y_train, y_test = train_test_split(tester, y, test_size=0.3)
+				clf=RandomForestClassifier(n_estimators=100, random_state = 1, n_jobs = -1)
+				clf.fit(X_train,y_train)
+				y_pred=clf.predict(X_test)
+		
+				from sklearn import metrics
+				act_acc = metrics.accuracy_score(y_test, y_pred)
+				#Accuracy kimenete, legyen ez act_acc
+			
+				if act_acc > acc:
+					new_table = tester.copy()
+					#X = X.drop(X.columns[j], axis = 1)
+					acc = act_acc
+					tester.drop (tester.iloc[:, 0:len(tester.columns)], inplace=True, axis=1)
+			
+				else:
+					tester = tester.drop(X.columns[j], axis = 1)
+				
+				j += 1
+		
+			else:
+				break
+			
+	f += 1
+	j = 0
+	features = new_table.copy()
+	
+
