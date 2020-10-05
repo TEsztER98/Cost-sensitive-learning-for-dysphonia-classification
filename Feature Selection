@@ -1,96 +1,90 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Oct  1 22:07:28 2020
-
-@author: Eszter
-"""
 
 
 import pandas as pd
-#import numpy as np
-#import seaborn as sns
-#import matplotlib.pyplot as plt
-
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-#from sklearn.metrics import roc_auc_score
+from sklearn.ensemble import RandomForestClassifier
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+from sklearn.metrics import accuracy_score as acc
 
-
-#Adatok betöltése Excelből
+# Adatok betöltése Excelből
 data = pd.read_excel (r'D:\BME\SZAKDOLGOZAT\470.xlsx')
- #place "r" before the path string to address special character, such as '\'. Don't forget to put the file name at the end of the path + '.xlsx'
 
-#Táblázat ellenőrzése
-#print (data)
+# Táblázat ellenőrzése
+# print (data)
 
-#A minta nevének és a nemnek a kivágása a táblázatból
+# A minta nevének és a nem kivágása a táblázatból, mert ezekre nem lesz szükség
 data = data.drop(["Minta ", "Nem"], axis=1)
 
 
-#A diagnózis kivágása a táblázatból, hogy aztán a targetbe tegyük
+# A diagnózis kivágása a táblázatból, hogy aztán a targetbe tegyük
 data2 = data.drop("Csoport", axis=1)
-#Kiíratás ellenőrzésre
-#print (features)
-
-#A diagnózis kerül a targetbe, hogy ez alapján osztályozzunk
-target = data["Csoport"] #Diagnózis
-#Kiíratás ellenőrzésre
-#print (target)
 
 
-X = pd.DataFrame(data2) #többi adat
-y = target #HC vagy PA
+# A diagnózist, hogy az adott minta a HC vagy a PA csoportba tartozik-e, az y tartalmazza
+y = data["Csoport"] #Diagnózis
+# print (y)
+
+# A jellemzőket és a hozzájuk tartozó értékeket mintánként az X táblázat tartalmazza
+X = pd.DataFrame(data2) 
+# print (X)
 
 
-#Hiányzó elemek keresése
-#Mivel elvileg 2 van, ezeket átlaggal helyettesítem
+# Hiányzó elemek keresése
+# Elvileg 2 van, ezeket átlaggal helyettesítem
 X.isnull().sum()
 column_means = X.mean()
 X = X.fillna(column_means)
 
-j = 0 #Mindig az adott oszlopra mutat
-x = pd.DataFrame()
-tester = pd.DataFrame() #Előzőleg X volt, az adathalmaz amivel osztályozunk
-new_table = pd.DataFrame()
-features = pd.DataFrame()
-acc =0 
-f = 0 #Kiválasztott jellemzők száma
+# Az adatok felosztása tanuló és tesztelő halmazra
+# Az adatok 20%-a kerül a tesztelő halmazba, 80% pedig a tanuló halmazba
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
+X_train.shape, X_test.shape
 
-while True:
-	if f < 50:
-		while True:
-			if j < 49-f:
-				x = X.iloc[:, j] #Az aktuális oszlop, feature
-				tester = pd.concat([features, x], axis = 1, sort = False) #Az adatok halmaza az aktuális oszloppal kibővítve
-		
-				#Osztályozó
-				from sklearn.datasets import make_classification
-				X_train, X_test, y_train, y_test = train_test_split(tester, y, test_size=0.3)
-				clf=RandomForestClassifier(n_estimators=100, random_state = 1, n_jobs = -1)
-				clf.fit(X_train,y_train)
-				y_pred=clf.predict(X_test)
-		
-				from sklearn import metrics
-				act_acc = metrics.accuracy_score(y_test, y_pred)
-				#Accuracy kimenete, legyen ez act_acc
-			
-				if act_acc > acc:
-					new_table = tester.copy()
-					#X = X.drop(X.columns[j], axis = 1)
-					acc = act_acc
-					tester.drop (tester.iloc[:, 0:len(tester.columns)], inplace=True, axis=1)
-			
-				else:
-					tester = tester.drop(X.columns[j], axis = 1)
-				
-				j += 1
-		
-			else:
-				break
-			
-	f += 1
-	j = 0
-	features = new_table.copy()
-	
+
+# Forward Feature Selection modell építése
+	#n_estimators: az erdőben lévő fák száma
+	#random_state: Random választásokat konrollálja, mivel 0, ezért mindig ugyanaz az eredmény jön ki
+	#n_jobs: megmondja a számítógépnek, hogy mennyi processzort használhat (-1: nincs korlátozás)
+	#verbose: A fa építésről tudunk meg több információt, ezzel a beállítással
+
+sfs = SFS(RandomForestClassifier(n_estimators=60, random_state=0, n_jobs = -1),
+         k_features = 20,
+          forward= True,
+          floating = False,
+          verbose= 2, #a faépítésről több infót tudunk
+          scoring= 'accuracy',
+          cv = 3,
+          n_jobs= -1
+         ).fit(X_train, y_train)
+
+# A kiválasztott jellemzők nevének megadása
+Feature_Names = sfs.k_feature_names_
+
+# A kiválasztott jellemzőket, a hozzájuk tartozó mintánkénti értékekkel együtt selected DataFramebe pakolom
+selected = pd.DataFrame()
+selected = pd.concat([y, (X.loc[:, Feature_Names]).copy()], axis = 1, sort = False)
+
+# Az elért pontosság
+accuracy = sfs.k_score_
+print ('Accuracy on selected features: %f' % accuracy)
+
+# Modell építés a meghatározott jellemzőkkel
+clf = RandomForestClassifier(n_estimators=1000, random_state=0, max_depth=4)
+clf.fit(X_train.loc[:, Feature_Names], y_train)
+
+# A tanulás pontossága a kiválasztott jellemzőkkel
+y_train_pred = clf.predict(X_train.loc[:, Feature_Names])
+print('Training accuracy on selected features: %.3f' % acc(y_train, y_train_pred))
+
+# A tesztelés pontossága a kiválasztott jellemzőkkel
+y_test_pred = clf.predict(X_test.loc[:, Feature_Names])
+print('Testing accuracy on selected features: %.3f' % acc(y_test, y_test_pred))
+
+# A kiválasztottjellemzőket oszlopostól kimásolom egy Excel fájlba, hogy a Cost Sensitive Classificationnál felhasználhassam
+selected.to_excel(r'D:\BME\SZAKDOLGOZAT\Selected_Features.xlsx', sheet_name='Selected', index = False)
+
+
+
+
+
 
