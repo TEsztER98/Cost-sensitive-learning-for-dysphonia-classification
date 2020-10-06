@@ -58,7 +58,7 @@ sfs = SFS(RandomForestClassifier(n_estimators=60, random_state=0, n_jobs = -1),
           floating = False,
           verbose= 2, #a faépítésről több infót tudunk
           scoring= 'accuracy',
-          cv = 3,
+          cv = 10,
           n_jobs= -1
          ).fit(X_train, y_train)
 
