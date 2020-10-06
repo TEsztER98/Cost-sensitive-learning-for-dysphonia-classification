@@ -63,7 +63,7 @@ acc =0
 #Kiválasztott jellemzők száma
 f = 0
 
-while f < 20:
+while f < 49:
 	while True:
 		if j < 49-f:
 			x = C.iloc[:, j] #Az aktuális oszlop
