@@ -22,12 +22,12 @@ x = pd.Series(data_target).value_counts()
 target = pd.DataFrame()
 target['Frequency'] = x
 target['Percentage'] = target['Frequency'] / target['Frequency'].sum()
-print (target)
+#print (target)
 
 #Number of features
 features = pd.DataFrame(data2.columns)
 feature_number = len(features)
-print(feature_number)
+#print(feature_number)
 
 
 # cost_mat[C_FP,C_FN,C_TP,C_TN]
@@ -211,3 +211,15 @@ results["sav"].loc["CSPC"] = savings_score(y_test, classifiers["CSPC"]["c"], cos
 print (results)
 
 
+              f1       pre       rec       acc       sav
+RF      0.756303  0.803571  0.714286  0.794326  0.320513
+DT      0.699187  0.716667  0.682540  0.737589  0.183761
+LR      0.803279  0.830508  0.777778  0.829787  0.452991
+RF-BMR  0.800000  0.776119  0.825397  0.815603  0.478632
+DT-BMR  0.699187  0.716667  0.682540  0.737589  0.183761
+LR-BMR  0.816000  0.822581  0.809524  0.836879  0.500000
+CSRP    0.773723  0.716216  0.841270  0.780142  0.431624
+CSDT    0.757576  0.724638  0.793651  0.773050  0.367521
+CSRFC   0.820144  0.750000  0.904762  0.822695  0.576923
+CSBC    0.805970  0.760563  0.857143  0.815603  0.512821
+CSPC    0.753846  0.731343  0.777778  0.773050  0.350427
